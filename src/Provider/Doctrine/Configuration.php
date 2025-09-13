@@ -192,6 +192,7 @@ final class Configuration implements ConfigurationInterface
 
             /** @var array<AuditingService> $auditingServices */
             $auditingServices = $this->provider->getAuditingServices();
+            $resolvedEntities = [];
             $exception = null;
             foreach ($auditingServices as $auditingService) {
                 $entityManager = $auditingService->getEntityManager();
@@ -206,6 +207,10 @@ final class Configuration implements ConfigurationInterface
                 try {
                     \assert(null !== $this->entities);
                     foreach (array_keys($this->entities) as $entity) {
+                        if (in_array($entity, $resolvedEntities, true)) {
+                            continue;
+                        }
+
                         $meta = $entityManager->getClassMetadata(DoctrineHelper::getRealClassName($entity));
                         $entityTableName = $meta->getTableName();
                         $namespaceName = $meta->getSchemaName() ?? '';
@@ -222,6 +227,8 @@ final class Configuration implements ConfigurationInterface
                             $computedTableName,
                             $this
                         );
+
+                        $resolvedEntities[] = $entity;
                     }
 
                     $exception = null;
