@@ -193,7 +193,6 @@ final class Configuration implements ConfigurationInterface
             /** @var array<AuditingService> $auditingServices */
             $auditingServices = $this->provider->getAuditingServices();
             $resolvedEntities = [];
-            $exception = null;
             foreach ($auditingServices as $auditingService) {
                 $entityManager = $auditingService->getEntityManager();
                 $platform = $entityManager->getConnection()->getDatabasePlatform();
@@ -230,17 +229,9 @@ final class Configuration implements ConfigurationInterface
 
                         $resolvedEntities[] = $entity;
                     }
-
-                    $exception = null;
-                } catch (\Throwable $throwable) {
-                    $exception = $throwable;
-
+                } catch (\Throwable) {
                     continue;
                 }
-            }
-
-            if ($exception !== null) {
-                throw $exception;
             }
 
             $this->initialized = true;
