@@ -192,6 +192,7 @@ final class Configuration implements ConfigurationInterface
 
             /** @var array<AuditingService> $auditingServices */
             $auditingServices = $this->provider->getAuditingServices();
+            $exception = null;
             foreach ($auditingServices as $auditingService) {
                 $entityManager = $auditingService->getEntityManager();
                 $platform = $entityManager->getConnection()->getDatabasePlatform();
@@ -202,25 +203,37 @@ final class Configuration implements ConfigurationInterface
                     $this->annotationLoaded[$auditingService->getName()] = true;
                 }
 
-                \assert(null !== $this->entities);
-                foreach (array_keys($this->entities) as $entity) {
-                    $meta = $entityManager->getClassMetadata(DoctrineHelper::getRealClassName($entity));
-                    $entityTableName = $meta->getTableName();
-                    $namespaceName = $meta->getSchemaName() ?? '';
+                try {
+                    \assert(null !== $this->entities);
+                    foreach (array_keys($this->entities) as $entity) {
+                        $meta = $entityManager->getClassMetadata(DoctrineHelper::getRealClassName($entity));
+                        $entityTableName = $meta->getTableName();
+                        $namespaceName = $meta->getSchemaName() ?? '';
 
-                    $computedTableName = $schemaManager->resolveTableName($entityTableName, $namespaceName, $platform);
-                    $this->entities[$entity]['table_schema'] = $namespaceName;
-                    $this->entities[$entity]['table_name'] = $entityTableName;
-                    // $this->entities[$entity]['computed_table_name'] = $entityTableName;
-                    $this->entities[$entity]['computed_table_name'] = $computedTableName;
-                    $this->entities[$entity]['audit_table_schema'] = $namespaceName;
-                    $this->entities[$entity]['audit_table_name'] = $schemaManager->computeAuditTablename($entityTableName, $this);
-                    // $this->entities[$entity]['computed_audit_table_name'] = $schemaManager->computeAuditTablename($this->entities[$entity], $this, $platform);
-                    $this->entities[$entity]['computed_audit_table_name'] = $schemaManager->computeAuditTablename(
-                        $computedTableName,
-                        $this
-                    );
+                        $computedTableName = $schemaManager->resolveTableName($entityTableName, $namespaceName, $platform);
+                        $this->entities[$entity]['table_schema'] = $namespaceName;
+                        $this->entities[$entity]['table_name'] = $entityTableName;
+                        // $this->entities[$entity]['computed_table_name'] = $entityTableName;
+                        $this->entities[$entity]['computed_table_name'] = $computedTableName;
+                        $this->entities[$entity]['audit_table_schema'] = $namespaceName;
+                        $this->entities[$entity]['audit_table_name'] = $schemaManager->computeAuditTablename($entityTableName, $this);
+                        // $this->entities[$entity]['computed_audit_table_name'] = $schemaManager->computeAuditTablename($this->entities[$entity], $this, $platform);
+                        $this->entities[$entity]['computed_audit_table_name'] = $schemaManager->computeAuditTablename(
+                            $computedTableName,
+                            $this
+                        );
+                    }
+
+                    $exception = null;
+                } catch (\Throwable $throwable) {
+                    $exception = $throwable;
+
+                    continue;
                 }
+            }
+
+            if ($exception !== null) {
+                throw $exception;
             }
 
             $this->initialized = true;
